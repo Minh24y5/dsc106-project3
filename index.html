@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>How will rainfall change?</title>
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%231b3d5c'/><path d='M50 20 C50 20 28 50 28 65 A22 22 0 0 0 72 65 C72 50 50 20 50 20 Z' fill='%236fcb97'/></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+    <script src="main.js" defer></script>
+</head>
+
+<body>
+    <header>
+        <h1>How will rainfall change by the end of the century, and how much do our emissions choices matter?</h1>
+        <p>Pick a world, then click anywhere on the map, or search a city, to see what 2081–2100 could look like
+            compared with today.</p>
+    </header>
+
+    <p id="notice" hidden><span></span> <button id="pick">Pick rain_data.json…</button><input type="file" id="file"
+            accept=".json" hidden></p>
+    <p id="headline" class="headline"></p>
+
+    <main>
+        <section>
+            <div class="map-controls">
+                <div class="control-group">
+                    <span class="control-label" id="scenario-label">Emissions Scenario</span>
+                    <div class="chips" id="chips" role="radiogroup" aria-labelledby="scenario-label"></div>
+                </div>
+                <div class="control-group control-group-search">
+                    <label class="control-label" for="city">Find a city</label>
+                    <div class="search-row">
+                        <div class="combo">
+                            <input id="city" placeholder="Search a city…" aria-label="Search a city" autocomplete="off">
+                            <button id="drop" aria-label="Show all cities" type="button">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round">
+                                    <path d="M2.5 4.5L6 8L9.5 4.5" />
+                                </svg>
+                            </button>
+                            <ul id="sug" hidden></ul>
+                        </div>
+                        <button id="surprise" type="button"
+                            title="Explore a random location with high divergence">Surprise me</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage">
+                <canvas id="cv"></canvas>
+                <svg id="ov"></svg>
+                <div class="map-hud" role="toolbar" aria-label="Map navigation controls">
+                    <button id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <line x1="8" y1="3" x2="8" y2="13" />
+                            <line x1="3" y1="8" x2="13" y2="8" />
+                        </svg>
+                    </button>
+                    <button id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round">
+                            <line x1="3" y1="8" x2="13" y2="8" />
+                        </svg>
+                    </button>
+                    <button id="zoom-reset" type="button" aria-label="Reset map view" title="Reset map view">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9L2 6" />
+                            <polyline points="2 2 2 6 6 6" />
+                        </svg>
+                    </button>
+                </div>
+                <div id="tip"></div>
+            </div>
+
+            <div class="legend-wrap">
+                <div class="legend">
+                    <div class="bar" id="bar"></div>
+                    <div id="lgd"></div>
+                </div>
+                <p class="hatch"><i></i> Hatched areas: fewer than 80% of climate models agree on whether it gets wetter
+                    or
+                    drier.</p>
+            </div>
+
+            <aside class="card" id="card" aria-live="polite" aria-atomic="true">
+                <p class="note">Loading 2081–2100 climate projections…</p>
+            </aside>
+
+            <div class="movers-section">
+                <h2 class="sub">Cities where our choices matter most</h2>
+                <div class="movers" id="movers"></div>
+            </div>
+        </section>
+    </main>
+
+    <section id="writeup" class="writeup" aria-labelledby="writeup-title">
+        <h2 id="writeup-title">Write-up</h2>
+
+        <h3>Overview</h3>
+        <p>[What question does this visualization answer, and who is it for?]</p>
+
+        <h3>Data</h3>
+        <p>[Source, variables, scenarios, baseline vs. future period, number of models, and how you processed the data.]
+        </p>
+
+        <h3>Design choices</h3>
+        <p>[Why this map projection and color scale, why hatching for model disagreement, why a fan chart for the place
+            card, what the interactions add.]</p>
+
+        <h3>What it shows</h3>
+        <p>[The 2–3 main findings a viewer should come away with, with specific places or numbers.]</p>
+
+        <h3>Limitations</h3>
+        <p>[Annual totals hide extremes, coarse grid cells, model uncertainty, grey cells where rainfall is too low,
+            etc.]</p>
+
+        <h3>Tools</h3>
+        <p>[Libraries used and versions, plus anything else the project requires you to credit.]</p>
+    </section>
+
+    <footer>
+        <p><b>The two worlds.</b> “Low emissions” is SSP1-2.6, where emissions fall sharply. “High emissions” is
+            SSP5-8.5, where they keep rising. “The difference” is high minus low, in percentage points.</p>
+        <p><b>More rain is not less drought.</b> A warmer world also evaporates more water, so a wetter place can still
+            dry out.</p>
+        <p><b>Averages hide storms.</b> These are yearly totals. Heavy downpours can intensify even where the total
+            barely changes.</p>
+        <p id="src"></p>
+    </footer>
+</body>
+
+</html>
