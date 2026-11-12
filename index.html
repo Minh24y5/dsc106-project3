@@ -103,25 +103,48 @@
         <h2 id="writeup-title">Write-up</h2>
 
         <h3>Overview</h3>
-        <p>[What question does this visualization answer, and who is it for?]</p>
+        <p> Our visualization of a global heatmap helps to illustrate projected global climate shifts, specifically answering how precipitation patterns 
+            are expected to change under future climate scenarios regarding emissions. It was designed with climate researchers, policy makers,
+            and the general public in mind to help them understand the long term impact of human activities on the environment. </p>
 
         <h3>Data</h3>
-        <p>[Source, variables, scenarios, baseline vs. future period, number of models, and how you processed the data.]
+        <p> This data was retrieved from the NOAA Public CMIP6 Dataset on Google Cloud Marketplace. We mainly focused on using
+            the precipitation, temperature, emissions, and geospatial coordinates variables to help compare a historical baseline 
+            against future SSP projection scenarios. The data processing was handled using xarray and pandas to manipulate the 
+            multidimensional netCDF files, compute spatial averages, and format the outputs for web rendering. Several different climate models were trained
+            and the data was aggregated together.
         </p>
 
-        <h3>Design choices</h3>
-        <p>[Why this map projection and color scale, why hatching for model disagreement, why a fan chart for the place
-            card, what the interactions add.]</p>
+        <h3>Design Choices</h3>
+        <ul>
+            <li><strong>Projection & Color Scale:</strong>  An area-preserving map projection and diverging color scale as the main channel
+                were chosen to intuitively display precipitation increases (e.g., cool toned greens/blues to emphasize wetness) versus 
+                decreases (e.g., warm browns to emphasize dryness) without distorting landmass sizes. Hatching is overlaid on specific 
+                geographic regions to explicitly indicate model disagreement, ensuring viewer transparency regarding predictive uncertainty.</li>
+            <li>Slider:</strong> </li>
+            <li><strong>Fanning Line Chart:</strong> A fannning line chart for the place card was implemented to display the expanding spread of model 
+                projections for rainfall over time, rather than a single misleading average. It includes a baseline 0% acis line, with 
+                a green line signifiying low emission rainfall trends and a red line signifying high emission rainfall trands. A colored fanning area was included to 
+                show the range of the percentaged acorss our different climate models. </li>
+            <li><strong>User Interactions:</strong> Interactive features (like panning and zooming) allow the user to explore localized geospatial data, 
+                demonstrating what the interactions add to the overarching global perspective. User's are able to click on specfic areas or
+                type and search for a specific city, marked on the graph with a point, to be able to see the specific data and predicted rainfall changes.</li>
+            <li><strong>Annotations:</strong> We included a legend thats shows the association between color and rainfall change. Coordinates of the location are shown when the 
+                user examins the map, and once an area is clicked, information about the location and its mid-century and end of century rainfall predictions
+                are displayed with an explation. Lastly, we included a list of cities where we would see the most change in rainfall due to emissions. </li>
+        </ul>
 
-        <h3>What it shows</h3>
-        <p>[The 2–3 main findings a viewer should come away with, with specific places or numbers.]</p>
+        <h3>Key Takeaways</h3>
+        <p> The key takeaway from our visualization is that human emission choices have a huge impact on global precipitation. Global precipitqtion is expcted to increase over
+            the end of the century, with an even stronger increase if we continue with strong emissions. However, due to increasing global temperatures as well, many regions will actually
+            start to become more dry due to increased evaporation. </p>
 
-        <h3>Limitations</h3>
-        <p>[Annual totals hide extremes, coarse grid cells, model uncertainty, grey cells where rainfall is too low,
-            etc.]</p>
-
-        <h3>Tools</h3>
-        <p>[Libraries used and versions, plus anything else the project requires you to credit.]</p>
+        <h3>Development Process</h3>
+        <p> Our development process including splitting the work evenly between all three team members. We first analyzed the dataset and deciding what message 
+            we wanted to convey with the final delivarable. Next, each team member generated and explored several static visualizations to understand the patterns in the data.
+            We then focused on making our interactive graph and web page. Making the interactive aspects of the graph was the most time consuming. The interactive visualization was 
+            built using standard web technologies (HTML, CSS, JavaScript) alongside D3.js, which was fairly new and difficult for us and took several hours over the week. Overall,
+            our final web page seems to work with little to no errors and is able to clearly convey our message about global warming. </p>
     </section>
 
     <footer>
