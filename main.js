@@ -7,6 +7,8 @@ const CITIES = [["Seattle", 47.6, -122.3], ["San Diego", 32.7, -117.2], ["Denver
 const proj = d3.geoNaturalEarth1().fitSize([W, H], { type: "Sphere" });
 const maskBytes = Uint8Array.from(atob(MASK), c => c.charCodeAt(0));
 const isLand = i => (maskBytes[i >> 3] >> (7 - (i & 7))) & 1;                  // 4° land mask (coastlines, Land/Ocean tag, % of land)
+const FINAL = 26;                                                             // window index whose 20 years = 2080–2099 ≈ the 2081–2100 end period
+let win = FINAL, playing = null;
 let D, view = "s585", pix, PLON, PLAT, sel = -1, coord = [0, 0], place = "", token = 0, ranked = [];
 const geoCache = {};
 
@@ -21,7 +23,11 @@ d3.select("#bar").selectAll("span").data(EDGES).join("span").style("left", (d, i
 const fromReal = R => ({ ...R, nx: 360 / R.step, ny: 180 / R.step, N: (360 / R.step) * (180 / R.step) });
 const ll = c => [-90 + D.step / 2 + Math.floor(c / D.nx) * D.step, -180 + D.step / 2 + (c % D.nx) * D.step];
 const cellOf = (lat, lon) => Math.min(D.ny - 1, Math.max(0, Math.floor((lat + 90) / D.step))) * D.nx + Math.min(D.nx - 1, Math.floor((lon + 180) / D.step));
-const val = (v, c) => { if (v == "diff") { const a = D.s585.chg[c], b = D.s126.chg[c]; return a == null || b == null ? null : a - b } return D[v].chg[c] };
+// % change vs 1995–2014 for the selected 20-year window (4 five-year bins). The final window uses the exact 2081–2100 numbers.
+const chgAt = (k, c, w = win) => { if (w === FINAL) return D[k].chg[c]; const t = D[k].ts[c]; return t ? (t[w] + t[w + 1] + t[w + 2] + t[w + 3]) / 4 : null };
+const val = (v, c) => { if (v == "diff") { const a = chgAt("s585", c), b = chgAt("s126", c); return a == null || b == null ? null : a - b } return chgAt(v, c) };
+const winLabel = (w = win) => w === FINAL ? "2081–2100" : `${D.bins[w]}–${D.bins[w] + 19}`;
+const isHist = (w = win) => D.bins[w] + 19 < 2015;                           // window lies fully in the historical runs (both worlds identical)
 const sg = n => (n > 0 ? "+" : n < 0 ? "−" : "") + Math.abs(n).toFixed(0), amt = p => `${Math.abs(p).toFixed(0)}% ${p >= 0 ? "higher" : "lower"}`;
 const nm = c => { const [a, o] = ll(c); return Math.abs(a).toFixed(0) + "°" + (a < 0 ? "S" : "N") + ", " + Math.abs(o).toFixed(0) + "°" + (o < 0 ? "W" : "E") };
 const fmtC = ([a, o]) => `${Math.abs(a).toFixed(2)}°${a < 0 ? "S" : "N"}, ${Math.abs(o).toFixed(2)}°${o < 0 ? "W" : "E"}`;
@@ -47,10 +53,14 @@ async function placeName(lat, lon) {
 }
 
 /* ---------- headline strip ---------- */
+// global rainfall change, weighted by cell area and by how much rain falls there today
+const gm = (k, w = win) => { let a = 0, b = 0; for (let i = 0; i < D.N; i++) { const v = chgAt(k, i, w), p = D.base[i]; if (v == null || p == null) continue; a += wlat(i) * p * (1 + v / 100); b += wlat(i) * p } return 100 * (a / b - 1) };
+const dry = (k, w = win) => { let a = 0, b = 0; for (let i = 0; i < D.N; i++) { const v = chgAt(k, i, w); if (v == null || !isLand(i)) continue; b += wlat(i); if (v < 0) a += wlat(i) } return 100 * a / b };
 function headline() {
-  const gm = k => { let a = 0, b = 0; for (let i = 0; i < D.N; i++) { const v = D[k].chg[i], p = D.base[i]; if (v == null || p == null) continue; a += wlat(i) * p * (1 + v / 100); b += wlat(i) * p } return 100 * (a / b - 1) };
-  const dry = k => { let a = 0, b = 0; for (let i = 0; i < D.N; i++) { const v = D[k].chg[i]; if (v == null || !isLand(i)) continue; b += wlat(i); if (v < 0) a += wlat(i) } return 100 * a / b };
-  $("#headline").innerHTML = `By 2081–2100, global rainfall is about <b>${sg(gm("s126"))}%</b> with strong emission cuts and <b>${sg(gm("s585"))}%</b> if emissions keep rising. In the high-emission world <b>${dry("s585").toFixed(0)}%</b> of land gets drier, versus <b>${dry("s126").toFixed(0)}%</b> in the low-emission world.`;
+  const L = winLabel();
+  $("#headline").innerHTML = isHist()
+    ? `In <b>${L}</b>, before the two emissions paths split (2015), global rainfall was about <b>${sg(gm("s585"))}%</b> versus 1995–2014, and <b>${dry("s585").toFixed(0)}%</b> of land was drier than the baseline. Press play to watch the worlds diverge.`
+    : `By <b>${L}</b>, global rainfall is about <b>${sg(gm("s126"))}%</b> with strong emission cuts and <b>${sg(gm("s585"))}%</b> if emissions keep rising. In the high-emission world <b>${dry("s585").toFixed(0)}%</b> of land gets drier, versus <b>${dry("s126").toFixed(0)}%</b> in the low-emission world.`;
 }
 
 /* ---------- map ---------- */
@@ -165,7 +175,7 @@ function buildMap() {
 }
 function paint() {
   const N = D.N, P = new Float32Array(N).fill(NaN), A = new Float32Array(N).fill(1);
-  for (let c = 0; c < N; c++) { const v = val(view, c); if (v != null) P[c] = v; if (view != "diff" && D[view].agree[c] != null) A[c] = D[view].agree[c] }
+  for (let c = 0; c < N; c++) { const v = val(view, c); if (v != null) P[c] = v; if (win === FINAL && view != "diff" && D[view].agree[c] != null) A[c] = D[view].agree[c] }
   const img = new ImageData(W, H), d = img.data;
   for (let n = 0; n < pix.length; n++) {
     const c = pix[n]; if (c < 0) continue;
@@ -182,7 +192,7 @@ function paint() {
   }
   off.getContext("2d").putImageData(img, 0, 0);
   renderCanvas();
-  $("#lgd").textContent = view == "diff" ? "High minus low emissions, in percentage points of rainfall (← drier in the high world · wetter →)" : "Rainfall change, 2081–2100 vs 1995–2014, in % (← drier · wetter →)";
+  $("#lgd").textContent = view == "diff" ? `High minus low emissions, ${winLabel()}, in percentage points of rainfall (← drier in the high world · wetter →)` : `Rainfall change, ${winLabel()} vs 1995–2014, in % (← drier · wetter →)`;
 }
 
 /* ---------- place card ---------- */
@@ -211,6 +221,19 @@ function fan(c) {
   g.append("path").attr("class", "ln").attr("stroke", "var(--mute)").attr("d", d3.line().x(X).y(i => ys(S.s126.m[i]))(d3.range(0, 13)));
   g.selectAll("text.y").data(ys.ticks(4)).join("text").attr("x", m.l - 5).attr("y", d => ys(d) + 4).attr("text-anchor", "end").text(d => (d > 0 ? "+" : d < 0 ? "−" : "") + Math.abs(d) + "%");
   g.selectAll("text.x").data([1950, 2000, 2050, 2100]).join("text").attr("x", d => xs(d)).attr("y", h - 5).attr("text-anchor", d => d == 2100 ? "end" : d == 1950 ? "start" : "middle").text(d => d);
+  // band showing the 20-year period currently on the map
+  g.insert("rect", ":first-child").attr("class", "win-band").attr("x", xs(bins[win])).attr("width", xs(bins[win] + 20) - xs(bins[win])).attr("y", m.t).attr("height", h - m.b - m.t);
+  // hover: read the values for one five-year bin
+  const hl = g.append("line").attr("class", "hover-ln").attr("y1", m.t).attr("y2", h - m.b).style("display", "none");
+  const ht = g.append("text").attr("class", "hover-tx").attr("y", m.t + 10).style("display", "none");
+  g.append("rect").attr("x", m.l).attr("width", w - m.l - m.r).attr("y", m.t).attr("height", h - m.b - m.t).attr("fill", "transparent")
+    .on("mousemove", e => {
+      const [mx] = d3.pointer(e), i = Math.max(0, Math.min(29, Math.round((xs.invert(mx) - 2.5 - 1950) / 5))), x = X(i), right = x > w / 2;
+      hl.style("display", null).attr("x1", x).attr("x2", x);
+      ht.style("display", null).attr("x", right ? x - 6 : x + 6).attr("text-anchor", right ? "end" : "start")
+        .text(i <= 12 ? `${bins[i]}–${bins[i] + 4}: ${sg(S.s126.m[i])}%` : `${bins[i]}–${bins[i] + 4}: low ${sg(S.s126.m[i])}%, high ${sg(S.s585.m[i])}%`);
+    })
+    .on("mouseleave", () => { hl.style("display", "none"); ht.style("display", "none") });
 }
 function card(c) {
   const a = D.s126.chg[c], b = D.s585.chg[c], today = D.base[c] == null ? null : D.base[c] * 365;
@@ -286,11 +309,12 @@ function welcomeCard() {
   $("#card").innerHTML = `
     <h2>Global Climate Atlas</h2>
     <div class="coords">2081–2100 Projections vs 1995–2014 Baseline</div>
-    <div class="tags"><span>Global Overview</span><span>34 Climate Models</span></div>
-    <p class="lead">Select a scenario above to see how global rainfall shifts under sharp emission cuts versus continued high emissions.</p>
+    <div class="tags"><span>Global Overview</span><span>${D.models} Climate Models</span></div>
+    <p class="lead">Select a scenario above, then press play on the timeline to watch rainfall shift from 1950 to 2100 under sharp emission cuts versus continued high emissions.</p>
     <div class="welcome-guide">
       <h4>Ways to explore:</h4>
       <ul>
+        <li><b>Press play</b> or drag the timeline to move the map through time, 20 years at a time.</li>
         <li><b>Click anywhere</b> on the map to inspect local projections.</li>
         <li><b>Search a city</b> or click <b>Surprise me</b> above to explore high-divergence locations.</li>
         <li><b>Pan and zoom</b> using the controls, mouse wheel, or touch pinch.</li>
@@ -301,7 +325,7 @@ function welcomeCard() {
 function start(R) {
   D = fromReal(R); sel = -1;
   $("#src").textContent = `${D.source} Grid: ${D.step}° cells. Change = 2081–2100 average vs 1995–2014 average. Cells with very little rain are left grey.`;
-  buildMap(); paint(); headline(); rank(); welcomeCard();
+  buildMap(); setWin(FINAL); rank(); welcomeCard(); spark();
 }
 async function load() {
   try {
@@ -311,6 +335,42 @@ async function load() {
     note(`Couldn’t load data/rain_data.json (${e.message}). Run make_data.py first, then start a local server in this folder (python -m http.server) and open http://localhost:8000. Or pick the file by hand:`);
   }
 }
+
+/* ---------- timeline: 20-year window slider, play button, global sparkline ---------- */
+const yr = $("#yr");
+function setWin(w) {
+  win = w; yr.value = w; $("#yr-label").textContent = winLabel();
+  yr.setAttribute("aria-valuetext", winLabel());
+  paint(); headline(); markSpark();
+  if (sel >= 0 && $("#fan")) fan(sel);
+}
+let SP = null;                                                                 // sparkline scales, kept for the marker
+function spark() {
+  const el = d3.select("#spark"), w = el.node().clientWidth || 600, h = 54, pad = 9;   // pad = half the slider thumb, so x lines up with the thumb
+  const ws = d3.range(0, FINAL + 1), G = { s126: ws.map(i => gm("s126", i)), s585: ws.map(i => gm("s585", i)) };
+  const xs = d3.scaleLinear([0, FINAL], [pad, w - pad]), all = [...G.s126, ...G.s585];
+  const ys = d3.scaleLinear([Math.min(0, d3.min(all)), Math.max(0, d3.max(all))], [h - 4, 12]).nice();
+  el.attr("viewBox", `0 0 ${w} ${h}`).html("");
+  el.append("line").attr("class", "base").attr("x1", pad).attr("x2", w - pad).attr("y1", ys(0)).attr("y2", ys(0));
+  el.append("line").attr("class", "split").attr("x1", xs(13)).attr("x2", xs(13)).attr("y1", 4).attr("y2", h);
+  el.append("text").attr("class", "split-tx").attr("x", xs(13) - 4).attr("y", 10).attr("text-anchor", "end").text("paths split →");
+  for (const k of ["s126", "s585"]) {
+    el.append("path").attr("class", "ln").attr("stroke", SC[k].color).attr("d", d3.line().x((_, i) => xs(i)).y(v => ys(v))(G[k]));
+    el.append("text").attr("class", "end-tx").attr("x", w - pad - 6).attr("y", ys(G[k][FINAL]) + (k == "s585" ? -4 : 11)).attr("text-anchor", "end").attr("fill", SC[k].color).text(sg(G[k][FINAL]) + "%");
+  }
+  el.append("line").attr("class", "now").attr("y1", 4).attr("y2", h);
+  SP = { xs }; markSpark();
+}
+function markSpark() { if (SP) d3.select("#spark .now").attr("x1", SP.xs(win)).attr("x2", SP.xs(win)) }
+function stop() { clearInterval(playing); playing = null; $("#timeline").classList.remove("is-playing"); $("#play").setAttribute("aria-label", "Play animation over time") }
+function play() {
+  if (playing) return stop();
+  if (win >= FINAL) setWin(0);
+  $("#timeline").classList.add("is-playing"); $("#play").setAttribute("aria-label", "Pause animation");
+  playing = setInterval(() => { if (win >= FINAL) return stop(); setWin(win + 1) }, 450);
+}
+$("#play").onclick = () => { if (D) play() };
+yr.oninput = () => { if (!D) return; stop(); setWin(+yr.value) };
 
 /* ---------- wiring ---------- */
 d3.select("#chips").selectAll("button").data(VIEWS).join("button")
@@ -387,7 +447,7 @@ svg.on("mousemove", e => {
   const c = pix[Math.floor(my) * W + Math.floor(mx)];
   if (!(c >= 0)) { t.style.display = "none"; return }
   const [la, lo] = ll(c), v = val(view, c), r = $("#ov").getBoundingClientRect();
-  t.textContent = `${nearestCity(la, lo) || nm(c)} · ${v == null ? "too dry to tell" : sg(v) + (view == "diff" ? " pts" : "%")}`;
+  t.textContent = `${nearestCity(la, lo) || nm(c)} · ${winLabel()} · ${v == null ? "too dry to tell" : sg(v) + (view == "diff" ? " pts" : "%")}`;
   t.style.display = "block";
   t.style.left = (e.clientX - r.left + 12) + "px";
   t.style.top = (e.clientY - r.top + 12) + "px";
@@ -413,5 +473,5 @@ if (stageEl) {
   });
 }
 
-let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (D && sel >= 0) card(sel) }, 150) });
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { if (D) spark(); if (D && sel >= 0) card(sel) }, 150) });
 load();

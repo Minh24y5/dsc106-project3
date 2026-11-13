@@ -16,8 +16,8 @@
 <body>
     <header>
         <h1>How will rainfall change by the end of the century, and how much do our emissions choices matter?</h1>
-        <p>Pick a world, then click anywhere on the map, or search a city, to see what 2081–2100 could look like
-            compared with today.</p>
+        <p>Pick a world, press play (or drag the timeline) to watch rainfall shift from 1950 to 2100, then click
+            anywhere on the map, or search a city, to see what the future could look like compared with today.</p>
     </header>
 
     <p id="notice" hidden><span></span> <button id="pick">Pick rain_data.json…</button><input type="file" id="file"
@@ -47,6 +47,23 @@
                         <button id="surprise" type="button"
                             title="Explore a random location with high divergence">Surprise me</button>
                     </div>
+                </div>
+            </div>
+
+            <div class="timeline" id="timeline">
+                <button id="play" type="button" aria-label="Play animation over time" title="Play">
+                    <svg class="i-play" width="14" height="14" viewBox="0 0 14 14"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>
+                    <svg class="i-pause" width="14" height="14" viewBox="0 0 14 14"><rect x="2.5" y="1.5" width="3.2" height="11" rx="1" fill="currentColor"/><rect x="8.3" y="1.5" width="3.2" height="11" rx="1" fill="currentColor"/></svg>
+                </button>
+                <div class="tl-body">
+                    <div class="tl-top">
+                        <span class="control-label">Period on the map <span class="tl-sub">· 20-year average</span></span>
+                        <output id="yr-label" for="yr">2081–2100</output>
+                    </div>
+                    <svg id="spark" aria-hidden="true"></svg>
+                    <input type="range" id="yr" min="0" max="26" step="1" value="26"
+                        aria-label="20-year period shown on the map">
+                    <div class="tl-key"><span class="k-lo">━ Low emissions</span><span class="k-hi">━ High emissions</span><span>Global average rainfall change vs 1995–2014</span></div>
                 </div>
             </div>
 
@@ -83,9 +100,7 @@
                     <div class="bar" id="bar"></div>
                     <div id="lgd"></div>
                 </div>
-                <p class="hatch"><i></i> Hatched areas: fewer than 80% of climate models agree on whether it gets wetter
-                    or
-                    drier.</p>
+                <p class="hatch"><i></i> Hatched areas: fewer than 80% of climate models agree on whether it gets wetter or drier (shown for 2081–2100).</p>
             </div>
 
             <aside class="card" id="card" aria-live="polite" aria-atomic="true">
@@ -93,7 +108,7 @@
             </aside>
 
             <div class="movers-section">
-                <h2 class="sub">Cities where our choices matter most</h2>
+                <h2 class="sub">Cities where our choices matter most (2081–2100)</h2>
                 <div class="movers" id="movers"></div>
             </div>
         </section>
@@ -121,27 +136,27 @@
                 were chosen to intuitively display precipitation increases (e.g., cool toned greens/blues to emphasize wetness) versus 
                 decreases (e.g., warm browns to emphasize dryness) without distorting landmass sizes. Hatching is overlaid on specific 
                 geographic regions to explicitly indicate model disagreement, ensuring viewer transparency regarding predictive uncertainty.</li>
-            <li>Slider:</strong> </li>
-            <li><strong>Fanning Line Chart:</strong> A fannning line chart for the place card was implemented to display the expanding spread of model 
-                projections for rainfall over time, rather than a single misleading average. It includes a baseline 0% acis line, with 
-                a green line signifiying low emission rainfall trends and a red line signifying high emission rainfall trands. A colored fanning area was included to 
-                show the range of the percentaged acorss our different climate models. </li>
+            <li><strong>Slider:</strong> </li>
+            <li><strong>Fanning Line Chart:</strong> A fanning line chart for the place card was implemented to display the expanding spread of model 
+                projections for rainfall over time, rather than a single misleading average. It includes a baseline 0% axis line, with 
+                a green line signifying low emission rainfall trends and a red line signifying high emission rainfall trends. A colored fanning area was included to 
+                show the range of the percentages across our different climate models. </li>
             <li><strong>User Interactions:</strong> Interactive features (like panning and zooming) allow the user to explore localized geospatial data, 
-                demonstrating what the interactions add to the overarching global perspective. User's are able to click on specfic areas or
+                demonstrating what the interactions add to the overarching global perspective. Users are able to click on specific areas or
                 type and search for a specific city, marked on the graph with a point, to be able to see the specific data and predicted rainfall changes.</li>
-            <li><strong>Annotations:</strong> We included a legend thats shows the association between color and rainfall change. Coordinates of the location are shown when the 
-                user examins the map, and once an area is clicked, information about the location and its mid-century and end of century rainfall predictions
-                are displayed with an explation. Lastly, we included a list of cities where we would see the most change in rainfall due to emissions. </li>
+            <li><strong>Annotations:</strong> We included a legend that shows the association between color and rainfall change. Coordinates of the location are shown when the 
+                user examines the map, and once an area is clicked, information about the location and its mid-century and end of century rainfall predictions
+                are displayed with an explanation. Lastly, we included a list of cities where we would see the most change in rainfall due to emissions. </li>
         </ul>
 
         <h3>Key Takeaways</h3>
-        <p> The key takeaway from our visualization is that human emission choices have a huge impact on global precipitation. Global precipitqtion is expcted to increase over
+        <p> The key takeaway from our visualization is that human emission choices have a huge impact on global precipitation. Global precipitation is expected to increase over
             the end of the century, with an even stronger increase if we continue with strong emissions. However, due to increasing global temperatures as well, many regions will actually
             start to become more dry due to increased evaporation. </p>
 
         <h3>Development Process</h3>
-        <p> Our development process including splitting the work evenly between all three team members. We first analyzed the dataset and deciding what message 
-            we wanted to convey with the final delivarable. Next, each team member generated and explored several static visualizations to understand the patterns in the data.
+        <p> Our development process included splitting the work evenly between all three team members. We first analyzed the dataset and decided what message 
+            we wanted to convey with the final deliverable. Next, each team member generated and explored several static visualizations to understand the patterns in the data.
             We then focused on making our interactive graph and web page. Making the interactive aspects of the graph was the most time consuming. The interactive visualization was 
             built using standard web technologies (HTML, CSS, JavaScript) alongside D3.js, which was fairly new and difficult for us and took several hours over the week. Overall,
             our final web page seems to work with little to no errors and is able to clearly convey our message about global warming. </p>
